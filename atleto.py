@@ -36,8 +36,13 @@ def pace(t, dist):
 def main():
 
     st.sidebar.markdown( "# Summary")
-    nruns = st.sidebar.number_input(min_value=1,max_value=50,value=20,label='Number of runs')
+    nruns = st.sidebar.number_input(min_value=1,max_value=50,value=20,label='Number of runs:')
+    tablefontsize = st.sidebar.number_input(min_value=10,max_value=30,value=16,label='Table font size:')
+
+    st.markdown( "# Overall Stats")
     st.markdown( "# Last " + str(nruns) + " Runs")
+
+    st.markdown( "<style scoped> table {font-size:" + str(tablefontsize) + "px;} </style>", unsafe_allow_html=True)
 
     conn = sqlite3.connect("atleto_data.atl")
     conn.create_function('jdate', 1, jdate)
@@ -57,7 +62,8 @@ def main():
     runs.set_index('Date',inplace=True)
 
     st.table(runs[-nruns:][::-1])
-    st.write("(c) 2022, Robert Uebbing")
+    st.markdown( 'Number of runs: **:blue[' + str(runs.size) + ']**, Last run on: ')
+    st.text( '\xA9 2022 Robert Uebbing')
 
 if __name__ == '__main__':
     main() 
