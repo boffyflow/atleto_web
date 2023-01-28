@@ -57,7 +57,7 @@ def main():
     runs.set_index('Date',inplace=True)
 
     st.table(runs[-nruns:][::-1])
-    st.write(runs.size)
+    st.write("(c) 2022, Robert Uebbing")
 
 if __name__ == '__main__':
     main() 
