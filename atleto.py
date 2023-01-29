@@ -4,66 +4,60 @@ from datetime import time
 import sqlite3
 import math
 import pandas as pd
-
-class aveHR:
-    def __init__(self):
-        self.tdist = 0
-        self.hr = 0
-
-    def step(self, hr, dist):
-        self.hr += hr * dist
-        self.tdist += dist
-
-    def finalize(self):
-        return self.hr / self.tdist
-
-def jdate(day):
-
-    datet = jd.jd_to_datetime(day)
-    return datet.strftime( '%Y-%m-%d')
-
-def pace(t, dist):
-    secs = t / (dist * 0.001)
-    mins = math.floor( secs / 60)
-    secs = secs - mins * 60
-    if round(secs) > 59:
-        secs = 0
-        mins = mins + 1    
-    
-    timet = time( 0, mins, round(secs))
-    return timet.strftime( '%M:%S')
+import atleto_model as am
 
 def main():
 
-    st.sidebar.markdown( "# Summary")
-    nruns = st.sidebar.number_input(min_value=1,max_value=50,value=20,label='Number of runs:')
-    tablefontsize = st.sidebar.number_input(min_value=10,max_value=30,value=16,label='Table font size:')
+    # General page and sidebar
 
-    st.markdown( "# Overall Stats")
-    st.markdown( "# Last " + str(nruns) + " Runs")
+    st.markdown( "# Welcome to Atleto Reports")
+    nruns = st.sidebar.slider(min_value=1,max_value=50,value=20,label='Number of most recent runs:')
+    st.markdown( "<style scoped> table {font-size:15px;} </style>", unsafe_allow_html=True)
 
-    st.markdown( "<style scoped> table {font-size:" + str(tablefontsize) + "px;} </style>", unsafe_allow_html=True)
+    # data model
 
-    conn = sqlite3.connect("atleto_data.atl")
-    conn.create_function('jdate', 1, jdate)
-    conn.create_function('pace', 2, pace)
-    conn.create_aggregate('avehr', 2, aveHR)
+    runs = am.model(alldata=True)
+    runs.drop(['Heartrate','run_id','id','endtime'], axis=1, inplace=True)
+    runs.rename( columns= {'TimeOfDay': 'Time of day'}, inplace=True)
+    runs['Distance'] = runs['Distance'].apply(am.meter2km)
+    runs['Time'] = runs['Time'].apply(am.sec2hms)
+    runs['Pace'] = runs['Pace'].apply(am.trimpace)
 
-    sqlite3.enable_callback_tracebacks(True) 
+    # first row and index colume from display
+    hide_table_row_index = """
+                <style>
+                thead tr {display:none}
+                thead tr th:first-child {display:none}
+                tbody th {display:none}
+                </style>
+                """
+    st.markdown(hide_table_row_index, unsafe_allow_html=True)
 
-    runs = pd.read_sql_query("SELECT jdate(day) AS Date,SUM(dist) AS Distance,\
-                                SUM(t) AS Time,PACE(SUM(t),SUM(dist)) AS Pace,\
-                                AVEHR(hr,dist) AS Heartrate\
-                                FROM run_splits\
-                                INNER JOIN runs\
-                                ON runs.id=run_splits.run_id\
-                                GROUP BY run_splits.run_id\
-                                ORDER BY day ASC", conn)
-    runs.set_index('Date',inplace=True)
+    # Stats table
 
+    st.markdown( "### Overall Stats")
+
+    stats = {
+        'Number of runs': len(runs.index),
+        'Total distance': 132223.2,
+        'Total time spent running': '111 days 3 hours 9 minutes 16 seconds',
+        'Average pace': '5:03 min/km',
+        'Average distance per run': '11.2 km',
+        'Average time per run': '0 hours 56 minutes 44 seconds'
+    }
+    st.table(stats.items())
+
+    # Last runs
+
+    st.markdown( "### Last " + str(nruns) + " Runs")
     st.table(runs[-nruns:][::-1])
-    st.markdown( 'Number of runs: **:blue[' + str(runs.size) + ']**, Last run on: ')
+
+    # Footer
+
+    st.markdown( 'Number of runs: **:blue[' + str(len(runs.index)) + 
+                    ']**, last run on: **:blue[' + runs['Date'].max() + ']**')
     st.text( '\xA9 2022 Robert Uebbing')
+
 
 if __name__ == '__main__':
     main() 
